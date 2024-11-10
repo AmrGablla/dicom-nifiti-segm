@@ -1,26 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from "vue";
 import {
   RenderingEngine,
   Enums,
   type Types,
   volumeLoader,
+  setVolumesForViewports,
   cornerstoneStreamingImageVolumeLoader,
-} from '@cornerstonejs/core';
-import { init as csRenderInit } from '@cornerstonejs/core';
-import { init as csToolsInit } from '@cornerstonejs/tools';
+} from "@cornerstonejs/core";
+import { init as csRenderInit } from "@cornerstonejs/core";
+import { init as csToolsInit } from "@cornerstonejs/tools";
 import * as cornerstoneTools from "@cornerstonejs/tools";
+import { prefetchMetadataInformation } from "../helpers/convertMultiframeImageIds.js";
 
 const { MouseBindings } = cornerstoneTools.Enums;
-;
-import { init as dicomImageLoaderInit } from '@cornerstonejs/dicom-image-loader';
-import cornerstoneDICOMImageLoader from '@cornerstonejs/dicom-image-loader';
+import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
+import cornerstoneDICOMImageLoader from "@cornerstonejs/dicom-image-loader";
 
 volumeLoader.registerUnknownVolumeLoader(cornerstoneStreamingImageVolumeLoader);
 
 const elementRef = ref<HTMLDivElement | null>(null);
 const running = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const volumeId = "cornerstoneStreamingImageVolume:CT_VOLUME_ID";
 
 async function setup() {
   if (running.value) {
@@ -33,23 +35,24 @@ async function setup() {
   dicomImageLoaderInit({ maxWebWorkers: 1 });
 
   cornerstoneTools.addTool(cornerstoneTools.StackScrollTool);
-  const toolGroup = cornerstoneTools.ToolGroupManager.createToolGroup("toolGroupId");
+  const toolGroup =
+    cornerstoneTools.ToolGroupManager.createToolGroup("toolGroupId");
   toolGroup.addTool(cornerstoneTools.StackScrollTool.toolName);
 
   toolGroup.setToolActive(cornerstoneTools.StackScrollTool.toolName, {
     bindings: [{ mouseButton: MouseBindings.Wheel }],
   });
-  
-  const renderingEngineId = 'myRenderingEngine';
+
+  const renderingEngineId = "myRenderingEngine";
   const renderingEngine = new RenderingEngine(renderingEngineId);
-  const viewportId = 'CT_STACK';
+  const viewportId = "CT_STACK";
 
   const viewportInput = {
     viewportId,
-    type: Enums.ViewportType.STACK,
+    type: Enums.ViewportType.ORTHOGRAPHIC,
     element: elementRef.value,
     defaultOptions: {
-      orientation: Enums.OrientationAxis.SAGITTAL,
+      orientation: Enums.OrientationAxis.AXIAL,
     },
   };
 
@@ -57,7 +60,7 @@ async function setup() {
 
   const viewport = renderingEngine.getViewport(viewportId);
 
-  function loadAndViewImages(files: FileList) {
+  async function loadAndViewImages(files: FileList) {
     const imageIds: string[] = [];
 
     for (const file of files) {
@@ -65,10 +68,18 @@ async function setup() {
       imageIds.push(imageId);
     }
 
-    // Set the stack on the viewport with multiple imageIds
-    viewport.setStack(imageIds).then(() => {
-      viewport.render();
+    await prefetchMetadataInformation(imageIds);
+    const volume = await volumeLoader.createAndCacheVolume(volumeId, {
+      imageIds: imageIds,
     });
+    volume.load();
+    setVolumesForViewports(
+      renderingEngine,
+      [{ volumeId: volumeId }],
+      [viewportId]
+    );
+
+    renderingEngine.renderViewport(viewportId);
   }
 
   function handleFileChange(event: Event) {
@@ -78,7 +89,7 @@ async function setup() {
     }
   }
 
-  fileInputRef.value?.addEventListener('change', handleFileChange);
+  fileInputRef.value?.addEventListener("change", handleFileChange);
   toolGroup.addViewport(viewportId, renderingEngineId);
 }
 
@@ -90,6 +101,9 @@ onMounted(() => {
 <template>
   <div>
     <input type="file" ref="fileInputRef" accept=".dcm" multiple />
-    <div ref="elementRef" style="width: 512px; height: 512px; background-color: #000"></div>
+    <div
+      ref="elementRef"
+      style="width: 512px; height: 512px; background-color: #000"
+    ></div>
   </div>
 </template>
