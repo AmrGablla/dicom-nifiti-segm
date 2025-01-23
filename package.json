@@ -11,13 +11,21 @@
     "type-check": "vue-tsc --build --force"
   },
   "dependencies": {
+    "@cornerstonejs/adapters": "^2.2.7",
     "@cornerstonejs/calculate-suv": "1.1.0",
     "@cornerstonejs/core": "^2.1.5",
     "@cornerstonejs/dicom-image-loader": "^2.1.5",
+    "@cornerstonejs/nifti-volume-loader": "^2.1.5",
     "@cornerstonejs/tools": "^2.1.5",
+    "@itk-wasm/image-io": "^1.4.0",
+    "axios": "^1.7.7",
+    "axois": "^0.0.1-security",
+    "cornerstone-nifti-image-loader": "^1.0.0",
     "dcmjs": "0.33.0",
     "dicom-parser": "1.8.21",
     "dicomweb-client": "0.10.4",
+    "itk": "^14.1.1",
+    "itk-wasm": "^1.0.0-b.185",
     "vue": "^3.5.12",
     "vue-router": "^4.4.5"
   },
